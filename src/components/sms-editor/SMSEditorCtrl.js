@@ -207,7 +207,7 @@ export default class SMSEditorCtrl {
 		// return `&nbsp;<input class="sms-keyword-inserted ${padding ? type : DEFAULT_TYPE_NAME}" value="${text}" style="width: ${padding + text.length}em" disabled>&nbsp;`;
 		let width = this.getTextWidth(text);
 
-		return `${prefix}<input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" disabled>${suffix}`;
+		return `${prefix}<mark contenteditable="false" style="background-color: transparent; margin: 0 3px;"><input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" readonly></mark>${suffix}`;
 	}
 
 	getTextWidth(text) {
@@ -488,12 +488,113 @@ export default class SMSEditorCtrl {
 		this._content.parentNode.classList[this._content.innerHTML.length ? 'remove' : 'add']('empty');
 	}
 
+	/**
+	 * 聚焦Node节点的前面还是后面
+	 */
+	focusNode(node, isBefore = false) {
+		const range = document.createRange();
+		range.selectNode(node);
+		range.collapse(isBefore);
+		const selection = window.getSelection();
+		selection.removeAllRanges();
+		selection.addRange(range);
+	}
+
+	focusTextNode(textNode, offset) {
+		const range = document.createRange();
+		range.setStart(textNode, offset);
+		range.setEnd(textNode, offset);
+		const selection = window.getSelection();
+		selection.removeAllRanges();
+		selection.addRange(range);
+	}
+
+	/**
+	 * 删除Node
+	 */
+	deleteNode(node) {
+		const range = document.createRange();
+		range.selectNode(node);
+		const selection = window.getSelection();
+		selection.removeAllRanges();
+		selection.addRange(range);
+		document.execCommand('delete', false, null);
+	}
+
+	controlCursor($event) {
+		const range = window.getSelection().getRangeAt(0);
+		const node = range.startContainer;
+		const preNode = node.childNodes[range.startOffset - 2];
+		const currentNode = node.childNodes[range.startOffset - 1];
+		const nextNode = node.childNodes[range.startOffset];
+
+		console.log(range);
+
+		switch ($event.keyCode) {
+			case 37: // left
+				if (node && node.nodeType === 3 && range.startOffset === 1) {
+					this.focusNode(range.startContainer.previousSibling);
+					$event.preventDefault();
+				} else {
+					if (node.nodeName === 'MARK') {
+						this.focusNode(node.previousSibling);
+						$event.preventDefault();
+					}
+
+					if (preNode && preNode.nodeName === 'MARK') {
+						this.focusNode(preNode);
+						$event.preventDefault();
+					} else if (preNode && preNode.nodeType === 3) {
+						this.focusTextNode(preNode, preNode.length);
+						$event.preventDefault();
+					}
+				}
+				break;
+			case 39: // right
+				if (node && node.nodeType === 3 && range.startContainer.length + 1 === range.startOffset) {
+					this.focusNode(range.startContainer.nextSibling);
+					$event.preventDefault();
+				} else {
+					if (node.nodeName === 'MARK') {
+						this.focusNode(node.nextSibling);
+						$event.preventDefault();
+					}
+					if (nextNode && nextNode.nodeName === 'MARK') {
+						this.focusNode(nextNode);
+						$event.preventDefault();
+					}
+				}
+				break;
+			case 8: // delete
+				if (node && node.nodeType === 3 && range.startOffset === 0) {
+					this.deleteNode(range.startContainer.previousSibling);
+					$event.preventDefault();
+				} else {
+					if (node.nodeName === 'MARK') {
+						this.deleteNode(node);
+						$event.preventDefault();
+					}
+					if (currentNode && currentNode.nodeName === 'MARK') {
+						this.deleteNode(currentNode);
+						$event.preventDefault();
+					}
+				}
+				break;
+			default:
+		}
+	}
+
 
 	/**
 	 * 文本修改后, 重置预览文本和最终结果
 	 * - !!! 输入时, 过滤【 和 】
 	 */
-	onChange() {
+	onChange($event) {
+
+		if ($event.target.nodeName === 'INPUT') {
+			this.focusNode($event.target.parentNode);
+		}
+
 		this.rememberFocus();
 
 		if (BRACKET_REG.test(this._content.innerHTML)) {

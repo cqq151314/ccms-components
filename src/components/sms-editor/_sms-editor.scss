@@ -120,7 +120,7 @@
   }
 }
 
-.sms-editor .sms-keyword-inserted:disabled {
+.sms-editor .sms-keyword-inserted:disabled, .sms-editor .sms-keyword-inserted[readonly] {
   -webkit-appearance: none;
   background-color: #fff;
   border: 0;
@@ -129,7 +129,6 @@
   font-size: inherit;
   height: auto;
   line-height: 1;
-  margin: 0 3px;
   overflow: visible;
   padding: 0;
 
@@ -141,6 +140,10 @@
 
   &::selection {
 	background: transparent;
+  }
+
+  &:focus {
+	color: green;
   }
 
   &::-moz-selection {
