@@ -12,6 +12,7 @@ const REG_URL = new RegExp(regUrlBase);
 const REG_URL_HASH = new RegExp(regUrlBase + '#');
 const DEFAULT_TYPE_NAME = 'default';
 const BRACKET_REG = /[【】œþ]/g; // 特殊字符
+const isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
 
 
 @Inject('$scope', '$element', '$timeout')
@@ -207,7 +208,11 @@ export default class SMSEditorCtrl {
 		// return `&nbsp;<input class="sms-keyword-inserted ${padding ? type : DEFAULT_TYPE_NAME}" value="${text}" style="width: ${padding + text.length}em" disabled>&nbsp;`;
 		let width = this.getTextWidth(text);
 
-		return `${prefix}<mark contenteditable="false" style="background-color: transparent; margin: 0 3px;"><input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" readonly></mark>${suffix}`;
+		if (isFirefox) {
+			return `${prefix}<mark contenteditable="false" style="background-color: transparent; margin: 0 3px;"><input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" readonly></mark>${suffix}`;
+		} else {
+			return `${prefix}<input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" disabled>${suffix}`;
+		}
 	}
 
 	getTextWidth(text) {
@@ -409,8 +414,29 @@ export default class SMSEditorCtrl {
 	 */
 	insertKeyword(text, type, disabled, prefix, suffix) {
 		if (!disabled) {
-			this.reFocus();
-			document.execCommand('insertHTML', false, this.createInput(text, type, prefix, suffix));
+			if (isFirefox) {
+				// TODO: 单前缀和单后缀 光标位置记录
+				this.reFocus();
+				console.log(this._range);
+				document.execCommand('insertHTML', false, this.createInput(text, type, prefix, suffix));
+				const br = this._content.querySelector('br[type=_moz]');
+				br ? this._content.removeChild(br) : angular.noop();
+				this.parseHTML();
+				this.checkEmpty();
+				if (this._range.startContainer.nodeType === 1) {
+					let offset = this._range.startOffset;
+					this._range = this.focusNode(this._range.startContainer.childNodes[offset]);
+				} else if (this._range.startContainer.nodeType === 3) {
+					if (this._range.startContainer.length === this._range.startOffset) {
+						if (this._range.startContainer.nextSibling) {
+							this._range = this.focusNode(this._range.startContainer.nextSibling);
+						}
+					}
+				}
+			} else {
+				this.reFocus();
+				document.execCommand('insertHTML', false, this.createInput(text, type, prefix, suffix));
+			}
 		}
 	}
 
@@ -498,6 +524,7 @@ export default class SMSEditorCtrl {
 		const selection = window.getSelection();
 		selection.removeAllRanges();
 		selection.addRange(range);
+		return range;
 	}
 
 	focusTextNode(textNode, offset) {
@@ -519,6 +546,12 @@ export default class SMSEditorCtrl {
 		selection.removeAllRanges();
 		selection.addRange(range);
 		document.execCommand('delete', false, null);
+	}
+
+	keydownHandler($event) {
+		if (isFirefox) {
+			this.controlCursor($event);
+		}
 	}
 
 	controlCursor($event) {
@@ -591,8 +624,12 @@ export default class SMSEditorCtrl {
 	 */
 	onChange($event) {
 
-		if ($event.target.nodeName === 'INPUT') {
-			this.focusNode($event.target.parentNode);
+		if ($event && $event.target.nodeName === 'INPUT') {
+			if (isFirefox) {
+				this.focusNode($event.target.parentNode);
+			} else {
+				this.focusNode($event.target);
+			}
 		}
 
 		this.rememberFocus();

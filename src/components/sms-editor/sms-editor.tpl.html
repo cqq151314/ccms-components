@@ -22,7 +22,7 @@
 	<div class="sms-content-holder" id="sms-content-holder" style="position: relative">
 		<div contenteditable="{{!ctrl.opts.disabled}}"
 			 data-content
-			 ng-keydown="ctrl.controlCursor($event)"
+			 ng-keydown="ctrl.keydownHandler($event)"
 			 ng-keyup="ctrl.onChange($event)"
 			 ng-mouseup="ctrl.onChange($event)"
 			 ng-keypress="ctrl.checkoutShortLink()"
