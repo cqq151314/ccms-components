@@ -209,7 +209,7 @@ export default class SMSEditorCtrl {
 		let width = this.getTextWidth(text);
 
 		if (isFirefox) {
-			return `${prefix}<mark contenteditable="false" style="background-color: transparent; margin: 0 3px;"><input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" readonly></mark>${suffix}`;
+			return `${prefix}<mark contenteditable="false" style="background-color: transparent;"><input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" readonly></mark>${suffix}`;
 		} else {
 			return `${prefix}<input class="sms-keyword-inserted ${type}" value="${text}" style="width: ${width + 2}px" disabled>${suffix}`;
 		}
@@ -625,9 +625,15 @@ export default class SMSEditorCtrl {
 				}
 				break;
 			case 13: // enter
-				console.log('enter');
-				document.execCommand('insertHTML', false, '<div><br/></div>');
+				// 禁用回车
 				$event.preventDefault();
+				// if (currentNode && currentNode.nodeName === 'MARK') {
+				// 	document.execCommand('insertHTML', false, '<div><br/></div>');
+				// 	$event.preventDefault();
+				// }
+				// if (node && node.nodeType === 3 && range.startContainer.length === range.startOffset) {
+				// 	console.log(node, preNode, currentNode, nextNode);
+				// }
 				break;
 			default:
 		}
@@ -641,8 +647,8 @@ export default class SMSEditorCtrl {
 	onChange($event) {
 
 		// 清除 br
-		const br = this._content.querySelector('br[type=_moz]');
-		br ? br.parentNode.removeChild(br) : angular.noop();
+		const mozbr = this._content.querySelector('br[type=_moz]');
+		mozbr ? mozbr.parentNode.removeChild(mozbr) : angular.noop();
 
 		if ($event && $event.target.nodeName === 'INPUT') {
 			if (isFirefox) {
