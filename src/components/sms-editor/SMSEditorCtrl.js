@@ -420,7 +420,7 @@ export default class SMSEditorCtrl {
 				console.log(this._range);
 				document.execCommand('insertHTML', false, this.createInput(text, type, prefix, suffix));
 				const br = this._content.querySelector('br[type=_moz]');
-				br ? this._content.removeChild(br) : angular.noop();
+				br ? br.parentNode.removeChild(br) : angular.noop();
 				this.parseHTML();
 				this.checkEmpty();
 				if (this._range.startContainer.nodeType === 1) {
@@ -565,9 +565,11 @@ export default class SMSEditorCtrl {
 
 		switch ($event.keyCode) {
 			case 37: // left
-				if (node && node.nodeType === 3 && range.startOffset === 1) {
-					this.focusNode(range.startContainer.previousSibling);
-					$event.preventDefault();
+				if (node && node.nodeType === 3 && range.startOffset === 0) {
+					if (range.startContainer.previousSibling) {
+						this.focusNode(range.startContainer.previousSibling);
+						$event.preventDefault();
+					}
 				} else {
 					if (node.nodeName === 'MARK') {
 						this.focusNode(node.previousSibling);
@@ -580,13 +582,20 @@ export default class SMSEditorCtrl {
 					} else if (preNode && preNode.nodeType === 3) {
 						this.focusTextNode(preNode, preNode.length);
 						$event.preventDefault();
+					} else if (preNode === undefined) {
+						if (currentNode) {
+							this.focusNode(currentNode, true);
+							$event.preventDefault();
+						}
 					}
 				}
 				break;
 			case 39: // right
-				if (node && node.nodeType === 3 && range.startContainer.length + 1 === range.startOffset) {
-					this.focusNode(range.startContainer.nextSibling);
-					$event.preventDefault();
+				if (node && node.nodeType === 3 && range.startContainer.length === range.startOffset) {
+					if (range.startContainer.nextSibling) {
+						this.focusNode(range.startContainer.nextSibling);
+						$event.preventDefault();
+					}
 				} else {
 					if (node.nodeName === 'MARK') {
 						this.focusNode(node.nextSibling);
@@ -606,12 +615,19 @@ export default class SMSEditorCtrl {
 					if (node.nodeName === 'MARK') {
 						this.deleteNode(node);
 						$event.preventDefault();
+					} else if (node.nodeName === 'DIV' && node.childNodes.length === 1 && node.firstChild.nodeName === 'BR') {
+						// node.previousSibling && this.focusNode(node.previousSibling.lastChild);
 					}
 					if (currentNode && currentNode.nodeName === 'MARK') {
 						this.deleteNode(currentNode);
 						$event.preventDefault();
 					}
 				}
+				break;
+			case 13: // enter
+				console.log('enter');
+				document.execCommand('insertHTML', false, '<div><br/></div>');
+				$event.preventDefault();
 				break;
 			default:
 		}
@@ -623,6 +639,10 @@ export default class SMSEditorCtrl {
 	 * - !!! 输入时, 过滤【 和 】
 	 */
 	onChange($event) {
+
+		// 清除 br
+		const br = this._content.querySelector('br[type=_moz]');
+		br ? br.parentNode.removeChild(br) : angular.noop();
 
 		if ($event && $event.target.nodeName === 'INPUT') {
 			if (isFirefox) {
